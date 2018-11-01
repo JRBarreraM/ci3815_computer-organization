@@ -3,7 +3,7 @@ archivo: .space 100 #reservamos 100 suponiendo que cada archivo no tiene mas de 
 buffer: .space 900  #reservamos 900 porque cada linea de codigo en ascii necesita 9 bytes incluyendo el \n
 .align 2
 programa:.space 400 #un programa de 900 bytes en ascii se convertira en uno de 400 en lenguaje ensamblador 
-
+codigoinstrucciones: .word 
 .text
 #INPUT:
 	la $a0 archivo		#direccion para el input
@@ -108,6 +108,10 @@ decodificacion:
 fin: 
 	li $v0 10
      	syscall 
+######################################################################
+
+
+
 # add  R 32 100000 add $rd, $rs, $rt $   $rd = $rs + $rt
 # addi I 08 001000 add $rt, $rs, Offset  $rt= $rs + ExtSigno(Offset)
 # and  R 40 101000 and $rd, $rs, $rt     $rd = $rs & $rt
