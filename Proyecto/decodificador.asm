@@ -81,7 +81,7 @@ main:
 	#Imprimimos los registros involucrados
 	#Extraemos el rs
 	lw $t0,test
-	andi $t6,$t0,0x07c00000	#apagamos los bits que no corresponde al rs
+	andi $t6,$t0,0x03e00000	#apagamos los bits que no corresponde al rs
 	srl $t6, $t6, 21	#rodamos el rs al inicio
 	#Imprimimos el signo de dólar
 	li $v0,4
@@ -184,7 +184,7 @@ main:
 	
 	#Extraemos el rs
 	lw $t0,test
-	andi $t6,$t0,0x07c00000	#apagamos los bits que no corresponde al rs
+	andi $t6,$t0,0x03e00000	#apagamos los bits que no corresponde al rs
 	srl $t6, $t6, 21	#rodamos el rs al inicio
 	#Imprimimos el rs
 	li $v0,1
