@@ -15,6 +15,7 @@ space: .asciiz " "
 left_parentesis: .asciiz "("
 right_parentesis: .asciiz ")"
 newline: .asciiz "\n"
+MensajeNoEncontrado: .asciiz "La operación no fue encontrada en la base de datos de MVML"
 
 #DATOS FASE 1:
 archivo: .space 100 #reservamos 100 suponiendo que cada archivo no tiene mas de 100 caracteres
@@ -184,7 +185,7 @@ loop_impresion:
 	srl $t1, $t1, 26	#rodamos el c.o. al inicio
 	
 	while_search:		#iteramos sobre el arreglo de c.o. buscando la instrucción
-
+	beq $t4,56,noEncontrado	#iteramos hasta 56 porque hay 14 c.o.
 	lw $t3,operation_code($t4)
 	beq $t1,$t3,undecode	#si encontramos el c.o. comenzamos la decodificación
 	addi $t2,$t2,2		#incremetamos las variables de iteración
@@ -227,12 +228,31 @@ loop_impresion:
 #Hay operaciones que no siguen el formato R o I exactamente, por lo que son casos especiales
 	
 	
-	beq $t3,0,loop_impresion	#la instrucción es halt
+	beq $t3,0,halt_case	#la instrucción es halt
 	beq $t3,35,lw_sw_case	#la instrucción es lw o sw
 	beq $t3,43,lw_sw_case
 	lb $t3,operation_type($t2)#verificamos si la operacion es de tipo I
 	beq $t3,$t6,typeI	#sino es de tipo R
 
+	halt_case:
+	#Imprimimos una nueva linea
+	li $v0,4
+	la $a0,newline
+	syscall
+	j loop_impresion #terminamos con la operación
+
+	noEncontrado:
+	#Imprimimos el mensaje de no encontrado
+	li $v0,4
+	la $a0,MensajeNoEncontrado
+	syscall
+
+	#Imprimimos una nueva linea
+	li $v0,4
+	la $a0,newline
+	syscall
+	j loop_impresion #terminamos con la operación
+		
 	#Imprimimos en formato R
 	
 	#Extraemos el rd
