@@ -232,7 +232,8 @@ loop_impresion:
 	beq $t3,35,lw_sw_case	#la instrucción es lw o sw
 	beq $t3,43,lw_sw_case
 	lb $t3,operation_type($t2)#verificamos si la operacion es de tipo I
-	beq $t3,$t6,typeI	#sino es de tipo R
+	beq $t3,$t6,typeI	#si es de tipo I
+	j typeR 	# en cualquier otro caso es de tipo R
 
 	halt_case:
 	#Imprimimos una nueva linea
@@ -253,6 +254,7 @@ loop_impresion:
 	syscall
 	j loop_impresion #terminamos con la operación
 		
+	typeR:
 	#Imprimimos en formato R
 	
 	#Extraemos el rd
