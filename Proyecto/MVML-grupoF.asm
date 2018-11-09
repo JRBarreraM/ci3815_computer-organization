@@ -1,21 +1,26 @@
+#CI3815-ORGANIZACION DEL COMPUTADOR
+
+#MVML: Máquina Virtual MIPS Ligero
+
 #GRUPO F
 #15-10123 Jose Barrera
 #15-11550 Jean Paul Yazbek
 
 .data
 #DATOS FASE 2:
-lw_case: .word 35
-sw_case: .word 43
+
+#Conjunto De Instrucciones
 operation_code: .word 	32,       8,     40,      12,    24,    37,      13,      4,      34,      35,      43,      5,       6,       0
 operation_type: .asciiz "R",      "I",   "R",     "I",   "R",   "R",     "I",     "R",    "R",     "I",     "I",     "I",     "I",     "R"
 operation_name: .asciiz "add","", "addi","and","","andi","mult","or"," ","ori","","sllv", "sub","","lw"," ","sw"," ","bne","","beq","","halt"
+
 I: .asciiz "I"
 dollar: .asciiz "$"
 space: .asciiz " "
 left_parentesis: .asciiz "("
 right_parentesis: .asciiz ")"
 newline: .asciiz "\n"
-MensajeNoEncontrado: .asciiz "La operación no fue encontrada en la base de datos de MVML"
+MensajeNoEncontrado: .asciiz "La operación no fue encontrada en el conjunto de instrucciones de la MVML"
 
 #DATOS FASE 1:
 archivo: .space 100 #reservamos 100 suponiendo que cada archivo no tiene mas de 100 caracteres
