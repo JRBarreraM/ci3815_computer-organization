@@ -261,67 +261,12 @@ loop_impresion:
 	la $a0,newline
 	syscall
 	j loop_impresion #terminamos con la operacion
-		
-	typeR:
-	#Imprimimos en formato R
-	
-	#Extraemos el rd
-	lw $t0,($s0)
-	andi $t3,$t0,0x0000f800 #apagamos los bits que no corresponde al rd
-	srl $t3, $t3, 11	#rodamos el rd al inicio
-	#Imprimimos el signo de dolar
-	li $v0,4
-	la $a0,dollar
-	syscall
-	#Imprimimos el rd
-	li $v0,1
-	move $a0,$t3
-	syscall
-
-	#Imprimimos un espacio en blanco
-	li $v0,4
-	la $a0,space
-	syscall
-	
-	#Extraemos el rs
-	lw $t0,($s0)
-	andi $t3,$t0,0x03e00000	#apagamos los bits que no corresponde al rs
-	srl $t3, $t3, 21	#rodamos el rs al inicio
-	#Imprimimos el signo de dolar
-	li $v0,4
-	la $a0,dollar
-	syscall	
-	#Imprimimos el rs
-	li $v0,1
-	move $a0,$t3
-	syscall
-
-	#Imprimimos un espacio en blanco
-	li $v0,4
-	la $a0,space
-	syscall
-
-	#Extraemos el rt
-	lw $t0,($s0)
-	andi $t3,$t0,0x001f0000 #apagamos los bits que no corresponde al rt
-	srl $t3, $t3, 16	#rodamos el rt al inicio
-	#Imprimimos el signo de dolar
-	li $v0,4
-	la $a0,dollar
-	syscall
-	#Imprimimos el rt
-	li $v0,1
-	move $a0,$t3
-	syscall
-
-	#Imprimimos una nueva linea
-	li $v0,4
-	la $a0,newline
-	syscall
-	j loop_impresion #terminamos con la operacion
 
 	#Imprimimos en formato I
 	typeI: 
+
+	beq $t3,5,bne_beq_case	#la instruccion es bne o beq
+	beq $t3,6,bne_beq_case
 	
 	#Extraemos el rt
 	lw $t0,($s0)
@@ -356,25 +301,17 @@ loop_impresion:
 	li $v0,4
 	la $a0,space
 	syscall
-
+	j extraerOffset
+	
+	extraerOffset:
 	#Extraemos el offset
 	lw $t0,($s0)
 	andi $t3,$t0,0x0000ffff #apagamos los bits que no corresponde al offset
 	
 #correcion: ***si la operacion es aritmetica debemos ver si el offset es negativo en complemento a 2 y hacer la extension de 
 #signo correspondiente***
-	bne $t9, 5, esbne#es addi? si no vemos si es bne
-	b convertirNegativo
-	 
-	esbne:
-	bne $t9, 6, esbeq#es bne? si no vemos si es beq
-	b convertirNegativo
 	
-	esbeq:
-	bne $t9, 8, continuarTipoI#si no seguimos
-	b convertirNegativo
-	
-	convertirNegativo:#aqui revisamos si el numero era negativo y si lo es agregamos la extension de signo
+	#aqui revisamos si el numero era negativo y si lo es agregamos la extension de signo
 	andi $t8, $t3,0x00008000
 	bne $t8, 0x00008000,continuarTipoI #si el numero no es negativo seguimos 
 	ori $t3, $t3, 0xffff0000 #si es negativo extendemos el signo
@@ -392,7 +329,7 @@ loop_impresion:
 	la $a0,newline
 	syscall
 	j loop_impresion	#terminamos con la operacion
-	
+
 	lw_sw_case:
 	#Extraemos el rt
 	lw $t0,($s0)
@@ -453,6 +390,103 @@ loop_impresion:
 	la $a0,newline
 	syscall
 	j loop_impresion #terminamos con la operacion
+
+	bne_beq_case:
+
+	#Extraemos el rs
+	lw $t0,($s0)
+	andi $t3,$t0,0x03e00000	#apagamos los bits que no corresponde al rs
+	srl $t3, $t3, 21	#rodamos el rs al inicio
+	#Imprimimos el signo de dolar
+	li $v0,4
+	la $a0,dollar
+	syscall	
+	#Imprimimos el rs
+	li $v0,1
+	move $a0,$t3
+	syscall
+	#Imprimimos un espacio en blanco
+	li $v0,4
+	la $a0,space
+	syscall
+
+	#Extraemos el rt
+	lw $t0,($s0)
+	andi $t3,$t0,0x001f0000 #apagamos los bits que no corresponde al rt
+	srl $t3, $t3, 16	#rodamos el rt al inicio
+	#Imprimimos el signo de dolar
+	li $v0,4
+	la $a0,dollar
+	syscall
+	#Imprimimos el rt
+	li $v0,1
+	move $a0,$t3
+	syscall
+	#Imprimimos un espacio en blanco
+	li $v0,4
+	la $a0,space
+	syscall
+
+	j extraerOffset	
+
+	typeR:
+	#Imprimimos en formato R
+	
+	#Extraemos el rd
+	lw $t0,($s0)
+	andi $t3,$t0,0x0000f800 #apagamos los bits que no corresponde al rd
+	srl $t3, $t3, 11	#rodamos el rd al inicio
+	#Imprimimos el signo de dolar
+	li $v0,4
+	la $a0,dollar
+	syscall
+	#Imprimimos el rd
+	li $v0,1
+	move $a0,$t3
+	syscall
+
+	#Imprimimos un espacio en blanco
+	li $v0,4
+	la $a0,space
+	syscall
+	
+	#Extraemos el rs
+	lw $t0,($s0)
+	andi $t3,$t0,0x03e00000	#apagamos los bits que no corresponde al rs
+	srl $t3, $t3, 21	#rodamos el rs al inicio
+	#Imprimimos el signo de dolar
+	li $v0,4
+	la $a0,dollar
+	syscall	
+	#Imprimimos el rs
+	li $v0,1
+	move $a0,$t3
+	syscall
+
+	#Imprimimos un espacio en blanco
+	li $v0,4
+	la $a0,space
+	syscall
+
+	#Extraemos el rt
+	lw $t0,($s0)
+	andi $t3,$t0,0x001f0000 #apagamos los bits que no corresponde al rt
+	srl $t3, $t3, 16	#rodamos el rt al inicio
+	#Imprimimos el signo de dolar
+	li $v0,4
+	la $a0,dollar
+	syscall
+	#Imprimimos el rt
+	li $v0,1
+	move $a0,$t3
+	syscall
+
+	#Imprimimos una nueva linea
+	li $v0,4
+	la $a0,newline
+	syscall
+	j loop_impresion #terminamos con la operacion
+	
 
 fin: 
 	li $v0 10
