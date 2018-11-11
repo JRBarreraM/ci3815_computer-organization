@@ -1,6 +1,6 @@
 #CI3815-ORGANIZACION DEL COMPUTADOR
 
-#MVML: Máquina Virtual MIPS Ligero
+#MVML: Maquina Virtual MIPS Ligero
 
 #GRUPO F
 #15-10123 Jose Barrera
@@ -20,7 +20,7 @@ space: .asciiz " "
 left_parentesis: .asciiz "("
 right_parentesis: .asciiz ")"
 newline: .asciiz "\n"
-MensajeNoEncontrado: .asciiz "La operación no fue encontrada en el conjunto de instrucciones de la MVML"
+MensajeNoEncontrado: .asciiz "La operacion no fue encontrada en el conjunto de instrucciones de la MVML"
 
 #DATOS FASE 1:
 archivo: .space 100 #reservamos 100 suponiendo que cada archivo no tiene mas de 100 caracteres
@@ -153,20 +153,21 @@ decodificacion:
 	
 #-----------------------------------------FASE_2-------------------------------------------------------------------------------------
 #PLANIFICACION DE REGISTROS FASE 2:
-#		0. $t0 : almacena la instrucción en hexa que se va a traducir e imprimir
-#		1. $t1 : almacena los 6 primeros bits de la instrucción (código de operación)
-#		2. $t2 : almacena el índice del arreglo de tipos de operación correspondiente a la operación por la
-#			 que se pasea la búsqueda en un momento dado (iterador de operation_type)
-#		3. $t3 : almacena el código de operación correspondiente a la operación por la que se pasea la búsqueda
-#			 en un momento dado, y luego de encontrada la operación, se usa como temporal para información que
-#			 se extraiga de la operación para imprimirla (rd,rs,rt u offset)
-#		4. $t4 : almacena el índice del arreglo de códigos de operación correspondiente a la operación por la
-#			 que se pasea la búsqueda en un momento dado (iterador de operation_code)
-#		5. $t5 : almacena el índice del arreglo de nombres de operación correspondiente a la operación por la
-#			 que se pasea la búsqueda en un momento dado (iterador de operation_name)
+#		0. $t0 : almacena la instruccion en hexa que se va a traducir e imprimir
+#		1. $t1 : almacena los 6 primeros bits de la instruccion (codigo de operacion)
+#		2. $t2 : almacena el indice del arreglo de tipos de operacion correspondiente a la operacion por la
+#			 que se pasea la busqueda en un momento dado (iterador de operation_type)
+#		3. $t3 : almacena el codigo de operacion correspondiente a la operacion por la que se pasea la busqueda
+#			 en un momento dado, y luego de encontrada la operacion, se usa como temporal para informacion que
+#			 se extraiga de la operacion para imprimirla (rd,rs,rt u offset)
+#		4. $t4 : almacena el indice del arreglo de codigos de operacion correspondiente a la operacion por la
+#			 que se pasea la busqueda en un momento dado (iterador de operation_code)
+#		5. $t5 : almacena el indice del arreglo de nombres de operacion correspondiente a la operacion por la
+#			 que se pasea la busqueda en un momento dado (iterador de operation_name)
 #		7. $t6 : almacena el .asciiz "I"
 #		8. $s0 : aqui cargamos la direccion del proximo codigo a decodificar
 #		9. $s1 : aqui cargamos al contenido de $s0 para verificar si alcanzamos la ultima linea \n
+#		10.$t9: aqui cargamos una copia del codigo de operacion de la operacion que se trata para los casos de offset negativos
 
 loop_impresion:
 
@@ -184,23 +185,23 @@ loop_impresion:
 	# Almacenamos en $t6 el ascii I	
 	lb $t6,I
 			
-	#Extraemos el código de operación
+	#Extraemos el codigo de operacion
 	lw $t0,($s0)			
 	andi $t1,$t0,0xfc000000	#apagamos los bits que no corresponde al c.o.
 	srl $t1, $t1, 26	#rodamos el c.o. al inicio
 	
-	while_search:		#iteramos sobre el arreglo de c.o. buscando la instrucción
+	while_search:		#iteramos sobre el arreglo de c.o. buscando la instruccion
 	beq $t4,56,noEncontrado	#iteramos hasta 56 porque hay 14 c.o.
 	lw $t3,operation_code($t4)
-	beq $t1,$t3,undecode	#si encontramos el c.o. comenzamos la decodificación
-	addi $t2,$t2,2		#incremetamos las variables de iteración
+	beq $t1,$t3,undecode	#si encontramos el c.o. comenzamos la decodificacion
+	addi $t2,$t2,2		#incremetamos las variables de iteracion
 	addi $t4,$t4,4
 	addi $t5,$t5,5
 	j while_search		#debe introducirse una instruccion correcta o sera un loop
 				#infinito
 	undecode:
 	
-	#Imprimimos la instrucción leída en hex
+	#Imprimimos la instruccion leida en hex
 	li $v0,34
 	lw $a0,($s0)
 	syscall
@@ -210,7 +211,7 @@ loop_impresion:
 	la $a0,space
 	syscall
 			
-	#Imprimimos el tipo de operación
+	#Imprimimos el tipo de operacion
 	li $v0,4
 	la $a0,operation_type($t2)
 	syscall
@@ -220,7 +221,7 @@ loop_impresion:
 	la $a0,space
 	syscall
 
-	#Imprimimos el nombre de la operación
+	#Imprimimos el nombre de la operacion
 	li $v0,4
 	la $a0,operation_name($t5)
 	syscall
@@ -232,9 +233,11 @@ loop_impresion:
 
 #Hay operaciones que no siguen el formato R o I exactamente, por lo que son casos especiales
 	
+	#guardamos el codigo de operacion para luego distinguir si es una operacion aritmetica o logica
+	move $t9, $t3 
 	
-	beq $t3,0,halt_case	#la instrucción es halt
-	beq $t3,35,lw_sw_case	#la instrucción es lw o sw
+	beq $t3,0,halt_case	#la instruccion es halt
+	beq $t3,35,lw_sw_case	#la instruccion es lw o sw
 	beq $t3,43,lw_sw_case
 	lb $t3,operation_type($t2)#verificamos si la operacion es de tipo I
 	beq $t3,$t6,typeI	#si es de tipo I
@@ -245,7 +248,7 @@ loop_impresion:
 	li $v0,4
 	la $a0,newline
 	syscall
-	j loop_impresion #terminamos con la operación
+	j loop_impresion #terminamos con la operacion
 
 	noEncontrado:
 	#Imprimimos el mensaje de no encontrado
@@ -257,7 +260,7 @@ loop_impresion:
 	li $v0,4
 	la $a0,newline
 	syscall
-	j loop_impresion #terminamos con la operación
+	j loop_impresion #terminamos con la operacion
 		
 	typeR:
 	#Imprimimos en formato R
@@ -266,7 +269,7 @@ loop_impresion:
 	lw $t0,($s0)
 	andi $t3,$t0,0x0000f800 #apagamos los bits que no corresponde al rd
 	srl $t3, $t3, 11	#rodamos el rd al inicio
-	#Imprimimos el signo de dólar
+	#Imprimimos el signo de dolar
 	li $v0,4
 	la $a0,dollar
 	syscall
@@ -284,7 +287,7 @@ loop_impresion:
 	lw $t0,($s0)
 	andi $t3,$t0,0x03e00000	#apagamos los bits que no corresponde al rs
 	srl $t3, $t3, 21	#rodamos el rs al inicio
-	#Imprimimos el signo de dólar
+	#Imprimimos el signo de dolar
 	li $v0,4
 	la $a0,dollar
 	syscall	
@@ -302,7 +305,7 @@ loop_impresion:
 	lw $t0,($s0)
 	andi $t3,$t0,0x001f0000 #apagamos los bits que no corresponde al rt
 	srl $t3, $t3, 16	#rodamos el rt al inicio
-	#Imprimimos el signo de dólar
+	#Imprimimos el signo de dolar
 	li $v0,4
 	la $a0,dollar
 	syscall
@@ -315,16 +318,16 @@ loop_impresion:
 	li $v0,4
 	la $a0,newline
 	syscall
-	j loop_impresion #terminamos con la operación
+	j loop_impresion #terminamos con la operacion
 
 	#Imprimimos en formato I
-	typeI:
-
+	typeI: 
+	
 	#Extraemos el rt
 	lw $t0,($s0)
 	andi $t3,$t0,0x001f0000 #apagamos los bits que no corresponde al rt
 	srl $t3, $t3, 16	#rodamos el rt al inicio
-	#Imprimimos el signo de dólar
+	#Imprimimos el signo de dolar
 	li $v0,4
 	la $a0,dollar
 	syscall
@@ -341,7 +344,7 @@ loop_impresion:
 	lw $t0,($s0)
 	andi $t3,$t0,0x03e00000	#apagamos los bits que no corresponde al rs
 	srl $t3, $t3, 21	#rodamos el rs al inicio
-	#Imprimimos el signo de dólar
+	#Imprimimos el signo de dolar
 	li $v0,4
 	la $a0,dollar
 	syscall	
@@ -357,6 +360,28 @@ loop_impresion:
 	#Extraemos el offset
 	lw $t0,($s0)
 	andi $t3,$t0,0x0000ffff #apagamos los bits que no corresponde al offset
+	
+#correcion: ***si la operacion es aritmetica debemos ver si el offset es negativo en complemento a 2 y hacer la extension de 
+#signo correspondiente***
+	bne $t9, 5, esbne#es addi? si no vemos si es bne
+	b convertirNegativo
+	 
+	esbne:
+	bne $t9, 6, esbeq#es bne? si no vemos si es beq
+	b convertirNegativo
+	
+	esbeq:
+	bne $t9, 8, continuarTipoI#si no seguimos
+	b convertirNegativo
+	
+	convertirNegativo:#aqui revisamos si el numero era negativo y si lo es agregamos la extension de signo
+	andi $t8, $t3,0x00008000
+	bne $t8, 0x00008000,continuarTipoI #si el numero no es negativo seguimos 
+	ori $t3, $t3, 0xffff0000 #si es negativo extendemos el signo
+	b continuarTipoI
+	
+	continuarTipoI:
+#fincorrecion:
 	#Imprimimos el offset	#ya esta al inicio
 	li $v0,1
 	move $a0,$t3
@@ -366,14 +391,14 @@ loop_impresion:
 	li $v0,4
 	la $a0,newline
 	syscall
-	j loop_impresion	#terminamos con la operación
+	j loop_impresion	#terminamos con la operacion
 	
 	lw_sw_case:
 	#Extraemos el rt
 	lw $t0,($s0)
 	andi $t3,$t0,0x001f0000 #apagamos los bits que no corresponde al rt
 	srl $t3, $t3, 16	#rodamos el rt al inicio
-	#Imprimimos el signo de dólar
+	#Imprimimos el signo de dolar
 	li $v0,4
 	la $a0,dollar
 	syscall
@@ -389,16 +414,22 @@ loop_impresion:
 	#Extraemos el offset
 	lw $t0,($s0)
 	andi $t3,$t0,0x0000ffff #apagamos los bits que no corresponde al offset
+	#revisamos si es negativo y si lo es agregamos la extension de signo
+	andi $t8, $t3,0x00008000
+	bne $t8, 0x00008000,continuarLSw #si el numero no es negativo seguimos 
+	ori $t3, $t3, 0xffff0000 #si es negativo extendemos el signo
+	
+	continuarLSw:
 	#Imprimimos el offset	#ya esta al inicio
 	li $v0,1
 	move $a0,$t3
 	syscall
 
-	#Imprimimos un paréntesis izquierdo
+	#Imprimimos un parentesis izquierdo
 	li $v0,4
 	la $a0,left_parentesis
 	syscall
-	#Imprimimos el signo de dólar
+	#Imprimimos el signo de dolar
 	li $v0,4
 	la $a0,dollar
 	syscall
@@ -412,7 +443,7 @@ loop_impresion:
 	move $a0,$t3
 	syscall
 
-	#Imprimimos un paréntesis derecho
+	#Imprimimos un parentesis derecho
 	li $v0,4
 	la $a0,right_parentesis
 	syscall
@@ -421,10 +452,8 @@ loop_impresion:
 	li $v0,4
 	la $a0,newline
 	syscall
-	j loop_impresion #terminamos con la operación
-	
+	j loop_impresion #terminamos con la operacion
 
 fin: 
 	li $v0 10
-     	syscall 
-     
+     	syscall
