@@ -310,7 +310,7 @@ loop_impresion:
 	
 #correcion: ***si la operacion es aritmetica debemos ver si el offset es negativo en complemento a 2 y hacer la extension de 
 #signo correspondiente***
-	
+
 	#aqui revisamos si el numero era negativo y si lo es agregamos la extension de signo
 	andi $t8, $t3,0x00008000
 	bne $t8, 0x00008000,continuarTipoI #si el numero no es negativo seguimos 

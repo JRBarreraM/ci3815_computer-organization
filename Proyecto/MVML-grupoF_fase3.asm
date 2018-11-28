@@ -184,11 +184,48 @@ loop_impresion:
 	addi $t5,$zero,0
 	# Almacenamos en $t6 el ascii I	
 	lb $t6,I
-			
+
+	#Funciones de extraccion a utilizar:
+	extract_CO:
+	andi $v1,$a0,0xfc000000	#apagamos los bits que no corresponde al c.o.
+	srl $v1, $v1, 26	#rodamos el c.o. al inicio
+	jr $ra
+
+	extract_RT:
+	andi $v1,$a0,0x001f0000 #apagamos los bits que no corresponde al rt
+	srl $v1, $v1, 16	#rodamos el rt al inicio
+	jr $ra	
+
+	extract_RS:
+	andi $v1,$v0,0x03e00000	#apagamos los bits que no corresponde al rs
+	srl $v1, $v1, 21	#rodamos el rs al inicio
+	jr $ra	
+
+	extract_RD:
+	andi $v1,$v0,0x0000f800 #apagamos los bits que no corresponde al rd
+	srl $v1, $v1, 11	#rodamos el rd al inicio
+	jr $ra
+
+	extract_Offset:
+	andi $v1,$v0,0x0000ffff #apagamos los bits que no corresponde al offset
+	#correcion: ***si la operacion es aritmetica debemos ver si el offset es negativo en complemento a 2 y hacer la extension de 
+	#signo correspondiente***	
+	#aqui revisamos si el numero era negativo y si lo es agregamos la extension de signo
+	jal extract_CO
+	beq $t9 12 salir_Offset#si la operacion es ori no vemos si el offset es negativo
+	beq $t9 13 salir_Offset#si la operacion es andi no vemos si el offset es negativo
+	andi $t0,$v1,0x00008000
+	bne $t0,0x00008000,salir_Offset #si el numero no es negativo seguimos 
+	ori $v1,$v1,0xffff0000 #si es negativo extendemos el signo
+	jr $ra
+	salir_Offset:
+	jr $ra
+	
+
 	#Extraemos el codigo de operacion
-	lw $t0,($s0)			
-	andi $t1,$t0,0xfc000000	#apagamos los bits que no corresponde al c.o.
-	srl $t1, $t1, 26	#rodamos el c.o. al inicio
+	jal extract_CO
+	addi $t3,$zero,0
+	add $t3,$zero,$v1
 	
 	while_search:		#iteramos sobre el arreglo de c.o. buscando la instruccion
 	beq $t4,56,noEncontrado	#iteramos hasta 56 porque hay 14 c.o.
@@ -198,13 +235,19 @@ loop_impresion:
 	addi $t4,$t4,4
 	addi $t5,$t5,5
 	j while_search
-
+	
+	noEncontrado:
+	#Imprimimos el mensaje de no encontrado
+	li $v0,4
+	la $a0,MensajeNoEncontrado
+	syscall
+	
 	undecode:
 
 #Hay operaciones que no siguen el formato R o I exactamente, por lo que son casos especiales
 	
 	#guardamos el codigo de operacion para luego distinguir si es una operacion aritmetica o logica
-	move $t9, $t3 
+	move $t9, $t3
 	
 	beq $t3,0,halt_case	#la instruccion es halt
 	lb $t3,operation_type($t2)#verificamos si la operacion es de tipo I
@@ -215,43 +258,22 @@ loop_impresion:
 	j loop_impresion #terminamos con la operacion
 
 	#Formato I
-	typeI: 
-	
+	typeI:
 	#Extraemos el rt
-	lw $t0,($s0)
-	andi $t3,$t0,0x001f0000 #apagamos los bits que no corresponde al rt
-	srl $t3, $t3, 16	#rodamos el rt al inicio
-	
+	jal extract_RT
 	#Extraemos el rs
-	lw $t0,($s0)
-	andi $t3,$t0,0x03e00000	#apagamos los bits que no corresponde al rs
-	srl $t3, $t3, 21	#rodamos el rs al inicio
-	extraerOffset:
-	
+	jal extract_RS
 	#Extraemos el offset
-	lw $t0,($s0)
-	andi $t3,$t0,0x0000ffff #apagamos los bits que no corresponde al offset
-	
-	#correcion: ***si la operacion es aritmetica debemos ver si el offset es negativo en complemento a 2 y hacer la extension de 
-	#signo correspondiente***
-	
-	#aqui revisamos si el numero era negativo y si lo es agregamos la extension de signo
-	andi $t8, $t3,0x00008000
-	bne $t8, 0x00008000,continuarTipoI #si el numero no es negativo seguimos 
-	ori $t3, $t3, 0xffff0000 #si es negativo extendemos el signo
-	b continuarTipoI
+	jal extract_Offset
 
-	continuarTipoI:
-	#fincorrecion:
-
-
+	#Formato R
 	typeR:
-	#Imprimimos en formato R
-
 	#Extraemos el rd
-	lw $t0,($s0)
-	andi $t3,$t0,0x0000f800 #apagamos los bits que no corresponde al rd
-	srl $t3, $t3, 11	#rodamos el rd al inicio
+	jal extract_RS
+	#Extraemos el rs
+	jal extract_RS
+	#Extraemos el rt
+	jal extract_RT
 
 fin: 
 	li $v0 10
