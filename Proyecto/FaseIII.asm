@@ -9,7 +9,11 @@
 .data
 #DATOS FASE 3:
 memoria:.space  2000 #espacio para la memoria
-registros:.space 132 #espacio para los 32 registros
+registros:.space 132 #espacio para los 32 registros y para el PC (numero 33)
+cuanta_memoria:.asciiz "Cuantas palabras de memoria quieres imprimir?"
+regs:.asciiz "----Registros----"
+mem:.asciiz "----Memoria----"
+espacio:.asciiz " "
 
 #DATOS FASE 2:
 .
@@ -150,15 +154,25 @@ loop:
 		addi $s0 $s0 2
 		j loop2
 
-decodificacion:
+#Calculamos la direccion inicial del PC virtual
+la $s3 registros
+addi $s3 $s3 128
+la $t0 programa
+sw $t0 ($s3)
 
+decodificacion:
 #-----------------------------------------FASE_3-------------------------------------------------------------------------------------
 #PLANIFICACION DE REGISTROS FASE 3:
 #		0. $a0 : almacena la instruccion en hexa que se leyo
 #		1. $s0 : almacena el indice del arreglo de codigos de operacion correspondiente a la operacion por la
 #			 que se pasea la busqueda en un momento dado (iterador de operation_code)
 #		2. $s1 : almacena el C.O. de la instruccion en hexa que se leyo
-#		2. $s2 : almacena el C.O. para comparar y encontrar la instruccion
+#		3. $s2 : almacena el C.O. para comparar y encontrar la instruccion
+#		4. $s3 : direccion del Pc virtual
+			
+	la $s3 registros
+	addi $s3 $s3 128
+	lw $a0 ($s3)
 	
 	# Inicializamos $s0 en 0
 	addi $s0,$zero,0
@@ -195,20 +209,20 @@ decodificacion:
 	#Extraemos el rs
 	jal extract_RS
 	mul $s6, $v0, 4
-	lw $a0, registros($s6)
+	la $a0, registros($s6)
 
-	addi $s0,$s0,-7
+	addi $s0,$s0,-24		#WTF??
 	bgez $s0,typeI			#si es de tipo I
 
 	#Extraemos el rt
 	jal extract_RT
 	mul $s6, $v0, 4
-	lw $a1, registros($s6)
+	la $a1, registros($s6)
 
 	#Extraemos el rd
 	jal extract_RD
 	mul $s6, $v0, 4	
-	lw $s6, registros($s6)
+	la $s6, registros($s6)
 	j llamarR
 	
 	#Formato I
@@ -216,61 +230,130 @@ decodificacion:
 	#Extraemos el offset
 	jal extract_Offset
 	mul $s6, $v0, 4
-	lw $a1, registros($s6)
+	la $a1, registros($s6)
 	#Extraemos el rt
 	jal extract_RT
 	mul $s6, $v0, 4
-	lw $a2, registros($s6)
-	lw $s6, registros($s6)
+	la $a2, registros($s6)
+	la $s6, registros($s6)
 	j llamarI
 	
-	halt_case:
+halt_case:
 	jal _halt
 	
 llamarR:
 	jalr $s4
-	sw $v0,$s6			
-	j erfegegerggggggggggggggggggggggsdgrgrgr #Aqui termina la decodificacion
+	sw $v0,($s6)
+	j decodificacion		#Aqui termina la decodificacion
 	
 llamarI:
 	jalr $s4
-	beq $s1,43,erfegegerggggggggggggggggggggggsdgrgrgr #No tiene Output
-	beq $s1,5,erfegegerggggggggggggggggggggggsdgrgrgr  #No tiene Output
-	beq $s1,6,erfegegerggggggggggggggggggggggsdgrgrgr  #No tiene Output
-	sw $v0,$s6
-	j erfegegerggggggggggggggggggggggsdgrgrgr	   #Aqui termina la decodificacion
+	beq $s1,43,decodificacion#No tiene Output
+	beq $s1,5,decodificacion #No tiene Output
+	beq $s1,6,decodificacion #No tiene Output
+	sw $v0,($s6)
+	j decodificacion	 #Aqui termina la decodificacion
 
 imprimir:
-	#Jean aqui necesitas pedir el input al usario, asumi que se
-	# guardara en $v0
-
-	# Inicializamos $s0 en 0
-	addi $s0,$zero,0
+	#Preguntamos cuanta memoria quiere leer el usuario
+	li $v0 4
+	la $a0 cuanta_memoria
+	syscall
+	#Pedimos el input entero
+	li $v0 5
+	syscall
+	move $t0 $v0 #guardamos en $t0 el registro para usarlo luego
+	
+	# IMPRIMIMOS REGISTROS
+	
+	# imprimimos un mensaje
+	li $v0 4
+	la $a0 regs
+	syscall
+	
+	#Imprimimos el salto de linea
+	li $v0 4
+	la $a0 newline
+	syscall
+	
+	addi $s0,$zero,0 #contador iteracion
+	addi $t1,$zero,0 #contador para impresion de nro de registro
 	
 	while_registros:		#iteramos para imprimir los registros
-	beq $s0,132,while_memoria	#iteramos hasta 33 porque hay 32 registors mas el PC
-	lw $s1,registros($s0)
-	
-	#Imprimimos en hex
-	li $v0,34
-	lw $a0,($s1)
-	syscall
+		beq $s0,132,salir_registros	#iteramos hasta 33 porque hay 32 registors mas el PC
+		lw $s1,registros($s0)	
+		
+		#Imprimimos el nro del registro
+		li $v0 1 
+		move $a0 $t1
+		syscall
+		
+		#Imprimimos un espacio
+		li $v0 4
+		la $a0 espacio
+		syscall
+		
+		#Imprimimos en hex
+		li $v0,34
+		move $a0,$s1
+		syscall
+		
+		#Imprimimos el salto de linea
+		li $v0 4
+		la $a0 newline
+		syscall
 
-	addi $s0,$s0,4		#incremetamos la variable de iteracion
-	j while_search
+		addi $s0,$s0,4		#incremetamos la variable de iteracion
+		addi $t1,$t1,1
+		j while_registros
+		
+	salir_registros:
+	
+	#IMPRIMIMOS MEMORIA
+	#mensaje
+	li $v0 4
+	la $a0 mem
+	syscall
+	
+	#Imprimimos el salto de linea
+	li $v0 4
+	la $a0 newline
+	syscall
+	
+	#recuperamos la cantidad de palabras de memoria a leer
+	mul $t0 $t0 4
+	addi $s0,$zero,0
+	addi $t1,$zero,0 #contador para imprimir el nro de palabra
 	
 	while_memoria:
-	beq $s0,$v0,fin		#iteramos hasta el numero de lineas que indique el usuario
-	lw $s1,memoria($s0)
-	
-	#Imprimimos en hex
-	li $v0,34
-	lw $a0,($s1)
-	syscall
+		beq $s0,$t0,fin		#iteramos hasta el numero de lineas que indique el usuario
+		lw $s1,memoria($s0)
+		
+		#Imprimimos el nro de palabra de memoria
+		li $v0 1 
+		move $a0 $t1
+		syscall
+		
+		#Imprimimos un espacio
+		li $v0 4
+		la $a0 espacio
+		syscall
+		
+		#Imprimimos en hex
+		li $v0,34
+		move $a0,$s1
+		syscall
+		
+		#Imprimimos el salto de linea
+		li $v0 4
+		la $a0 newline
+		syscall
 
-	addi $s0,$s0,4		#incremetamos la variable de iteracion
-	j while_search
+		addi $t1,$t1,1
+		addi $s0,$s0,4		#incremetamos la variable de iteracion
+		j while_memoria
 
+#punto utilizado para culminar el programa
 fin: 
 	li $v0 10
      	syscall
@@ -477,7 +560,7 @@ _sw:
 _bne: 
 	beq $a0 $a2 bne_exit #si son iguales $rs y $rt no modificamos el pc
 		sll $a1 $a1 2 #si no calculamos el desplazamiento
-		li $t0 116 #posicion del registro del pc contando desde 0 al 128
+		li $t0 128 #posicion del registro del pc contando desde 0 al 128
 		lw $t1 registros($t0) #cargamos el contenido actual del pc
 		add $t1 $t1 $a1 #calculamos la nueva direccion para el pc
 		sw $t1 registros($t0)#cargamos el nuevo pc
@@ -497,7 +580,7 @@ _bne:
 _beq: 
 	bne $a0 $a2 beq_exit #si son iguales $rs y $rt no modificamos el pc
 		sll $a1 $a1 2 #si no calculamos el desplazamiento
-		li $t0 116 #posicion del registro del pc contando desde 0 al 128
+		li $t0 128 #posicion del registro del pc contando desde 0 al 128
 		lw $t1 registros($t0) #cargamos el contenido actual del pc
 		add $t1 $t1 $a1 #calculamos la nueva direccion para el pc
 		sw $t1 registros($t0)#cargamos el nuevo pc
