@@ -10,15 +10,15 @@
 #DATOS FASE 3:
 memoria:.space  2000 #espacio para la memoria
 registros:.space 132 #espacio para los 32 registros y para el PC (numero 33)
-cuanta_memoria:.asciiz "Cuantas palabras de memoria quieres imprimir?"
+cuanta_memoria:.asciiz "Cuantas palabras de memoria quieres imprimir? "
 regs:.asciiz "----Registros----"
 mem:.asciiz "----Memoria----"
 espacio:.asciiz " "
 
 #DATOS FASE 2:
-.
+
 #Conjunto De Instrucciones
-operation_code: .word         8,   12,  13, 35, 43,   5,   6,  32,  40,   24, 27,    4,  34, 0
+operation_code: .word         8,   12,  13, 35, 43,   5,   6,  32,  40,   24, 37,    4,  34, 0
 operation_function: .word _addi,_andi,_ori,_lw,_sw,_bne,_beq,_add,_and,_mult,_or,_sllv,_sub,_halt
 
 newline: .asciiz "\n"
@@ -95,7 +95,7 @@ loop:
 	lb $a1 ($s0)	       #cargamos el primer byte que viene en notacion ascii
 	lb $a2 1($s0)	       #cargamos el segundo byte ascii
 	beq $a1 10 regresarloop2	#si a1 es un \n vamos a regresarloop2
-	beq $a2 $zero decodificacion	#si a2 es 0 significa que alcanzamos la ultima linea, nos vamnos a decodificar
+	beq $a2 $zero pre_decodificacion	#si a2 es 0 significa que alcanzamos la ultima linea, nos vamos a decodificar
 	subi $t0 $a1 48			#restamos 48 y lo guardamos en t0 para saber si a1 es un numero
 	subi $t1 $a2 48			#restamos 48y lo guardamos en t1  para saber si a2 es un numero
 	ble $t0 10 caso1 		#caso en el que el primer byte es un numero
@@ -155,6 +155,8 @@ loop:
 		j loop2
 
 #Calculamos la direccion inicial del PC virtual
+pre_decodificacion: 
+
 la $s3 registros
 addi $s3 $s3 128
 la $t0 programa
@@ -165,26 +167,25 @@ decodificacion:
 #PLANIFICACION DE REGISTROS FASE 3:
 #		0. $a0 : almacena la instruccion en hexa que se leyo
 #		1. $s0 : almacena el indice del arreglo de codigos de operacion correspondiente a la operacion por la
-#			 que se pasea la busqueda en un momento dado (iterador de operation_code)
-#		2. $s1 : almacena el C.O. de la instruccion en hexa que se leyo
-#		3. $s2 : almacena el C.O. para comparar y encontrar la instruccion
-#		4. $s3 : direccion del Pc virtual
-			
+#			 que se pasea la busqueda en un momento dado (iterador de operation_code y operation_function)
+#		2. $s1 : almacena el codigo de operacion de la instruccion
+#		3. $s4 : almacena la funcion correspondiente a la instruccion
+
 	la $s3 registros
 	addi $s3 $s3 128
-	lw $a0 ($s3)
+	lw $t1 ($s3) #cargamos la direccion que contiene el pc virtual
+	lw $a0 ($t1)
 	
 	# Inicializamos $s0 en 0
 	addi $s0,$zero,0
 
 	#Extraemos el codigo de operacion
 	jal extract_CO
-	addi $s1,$zero,0
-	add $s1,$zero,$v1
+	add $s1,$zero,$v0
 
 	# Incrementamos el PC virtual en 4
 	la $t0,registros
-	lw $s6,128($t0)			#REcordatorio especificar ruta PC virtual
+	lw $s6,128($t0)
 	addi $s6,$s6,4
 	sw $s6,128($t0)
 	
@@ -201,58 +202,62 @@ decodificacion:
 	li $v0,4
 	la $a0,MensajeNoEncontrado
 	syscall
+	#Imprimimos el salto de linea
+	li $v0 4
+	la $a0 newline
+	syscall
+	j decodificacion
 
 	undecode:
 #Hay operaciones que no siguen el formato R o I exactamente, por lo que son casos especiales
 	beq $s1,0,halt_case		#la instruccion es halt
 
-	#Extraemos el rs
-	jal extract_RS
-	mul $s6, $v0, 4
-	la $a0, registros($s6)
-
-	addi $s0,$s0,-24		#WTF??
-	bgez $s0,typeI			#si es de tipo I
+	addi $s0,$s0,-24
+	blez $s0,typeI		#si es de tipo I
 
 	#Extraemos el rt
 	jal extract_RT
 	mul $s6, $v0, 4
-	la $a1, registros($s6)
+	lw $a1, registros($s6)
 
 	#Extraemos el rd
 	jal extract_RD
-	mul $s6, $v0, 4	
-	la $s6, registros($s6)
-	j llamarR
+	mul $s6, $v0, 4
+	la $s2, registros($s6) #en s2 esta la direccion de rd
+	j callFunction
 	
 	#Formato I
 	typeI:
+	move $a1 $s2		#movemos el C.O. a $a1
 	#Extraemos el offset
 	jal extract_Offset
-	mul $s6, $v0, 4
-	la $a1, registros($s6)
+	move $a1, $v0		#almacenamos en $a1 el offset
 	#Extraemos el rt
 	jal extract_RT
 	mul $s6, $v0, 4
-	la $a2, registros($s6)
-	la $s6, registros($s6)
-	j llamarI
+	lw $a2, registros($s6)
+	la $s2, registros($s6) #en s2 esta la direccion de rt
+
+callFunction:
+	#Extraemos el rs
+	jal extract_RS
+	mul $s6, $v0, 4
+	lw $a0, registros($s6)
+	
+	#Llamamos a la funcion correspodiente	
+	jalr $s4
+	
+	#Casos especiales que no tienen Output
+	beq $s1,43,decodificacion
+	beq $s1,5,decodificacion
+	beq $s1,6,decodificacion
+	
+	#Almacenamos el resultado en la memoria virtual
+	sw $v0,($s2)
+	j decodificacion	 #Aqui termina la decodificacion
 	
 halt_case:
 	jal _halt
-	
-llamarR:
-	jalr $s4
-	sw $v0,($s6)
-	j decodificacion		#Aqui termina la decodificacion
-	
-llamarI:
-	jalr $s4
-	beq $s1,43,decodificacion#No tiene Output
-	beq $s1,5,decodificacion #No tiene Output
-	beq $s1,6,decodificacion #No tiene Output
-	sw $v0,($s6)
-	j decodificacion	 #Aqui termina la decodificacion
 
 imprimir:
 	#Preguntamos cuanta memoria quiere leer el usuario
@@ -359,21 +364,42 @@ fin:
      	syscall
 #----------------------------------------FUNCIONES------------------------------------------------------------------------------------
 	#Funciones de extraccion:
+	
+#funcion extract_CO: guarda los 6 primeros bits de $a0 en $v0
+#             Argumentos:
+#$a0: palabra de 32 bits (instruccion)
+#	      Salida:
+#$v0: 6 primeros bits de $a0 (codigo de operacion)
 	extract_CO:
 	andi $v0,$a0,0xfc000000	#apagamos los bits que no corresponde al c.o.
 	srl $v0, $v0, 26	#rodamos el c.o. al inicio
 	jr $ra
 
+#funcion extract_RS: guarda los bits del 7 al 11 de $a0 en $v0
+#             Argumentos:
+#$a0: palabra de 32 bits (instruccion)
+#	      Salida:
+#$v0: bits del 7 al 11 de $a0 (registro fuente)
+	extract_RS:
+	andi $v0,$a0,0x03e00000	#apagamos los bits que no corresponde al rs
+	srl $v0, $v0, 21	#rodamos el rs al inicio
+	jr $ra
+
+#funcion extract_RT: guarda los bits del 12 al 16 de $a0 en $v0
+#             Argumentos:
+#$a0: palabra de 32 bits (instruccion)
+#	      Salida:
+#$v0: bits del 12 al 16 de $a0 (registro fuente)
 	extract_RT:
 	andi $v0,$a0,0x001f0000 #apagamos los bits que no corresponde al rt
 	srl $v0, $v0, 16	#rodamos el rt al inicio
 	jr $ra	
 
-	extract_RS:
-	andi $v0,$a0,0x03e00000	#apagamos los bits que no corresponde al rs
-	srl $v0, $v0, 21	#rodamos el rs al inicio
-	jr $ra	
-
+#funcion extract_RD: guarda los bits del 17 al 21 de $a0 en $v0
+#             Argumentos:
+#$a0: palabra de 32 bits (instruccion)
+#	      Salida:
+#$v0: bits del 17 al 21 de $a0 (registro destino)
 	extract_RD:
 	andi $v0,$a0,0x0000f800 #apagamos los bits que no corresponde al rd
 	srl $v0, $v0, 11	#rodamos el rd al inicio
@@ -384,13 +410,11 @@ fin:
 	#correcion: ***si la operacion es aritmetica debemos ver si el offset es negativo en complemento a 2 y hacer la extension de 
 	#signo correspondiente***	
 	#aqui revisamos si el numero era negativo y si lo es agregamos la extension de signo
-	jal extract_CO
-	beq $s2 12 salir_Offset#si la operacion es ori no vemos si el offset es negativo
-	beq $s2 13 salir_Offset#si la operacion es andi no vemos si el offset es negativo
+	beq $a1 12 salir_Offset#si la operacion es ori no vemos si el offset es negativo
+	beq $a1 13 salir_Offset#si la operacion es andi no vemos si el offset es negativo
 	andi $t0,$v0,0x00008000
 	bne $t0,0x00008000,salir_Offset #si el numero no es negativo seguimos 
 	ori $v0,$v0,0xffff0000 #si es negativo extendemos el signo
-	jr $ra
 	salir_Offset:
 	jr $ra
 
@@ -451,7 +475,7 @@ _or:
 #	      Salida:
 #$v0: shift logico a la izquierda de $a1 segun la cantidad de bits en $a0
 _sllv: 
-	sllv  $v0 $a1 $a0
+	sllv  $v0 $a0 $a1
 	jr $ra
 	
 #funcion 6: aplica resta al contenido de $a0 y $a1 en $v0
